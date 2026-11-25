@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IdeaBoard - v1.1</title>
+  <title>IdeaBoard - v2.0 (Database Connected)</title>
+  <!-- Load Supabase Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -29,17 +31,14 @@
       margin-bottom: 20px;
     }
     .badge {
-      background: #dcfce7;
-      color: #166534;
+      background: #dbeafe;
+      color: #1e40af;
       font-size: 12px;
       font-weight: 700;
       padding: 4px 10px;
       border-radius: 999px;
     }
-    h1 {
-      font-size: 20px;
-      margin: 0;
-    }
+    h1 { font-size: 20px; margin: 0; }
     .input-group {
       display: flex;
       gap: 8px;
@@ -53,7 +52,7 @@
       font-size: 14px;
     }
     button {
-      background-color: #0f172a;
+      background-color: #2563eb;
       color: #ffffff;
       border: none;
       padding: 10px 16px;
@@ -62,59 +61,92 @@
       border-radius: 8px;
       cursor: pointer;
     }
-    button:hover {
-      background-color: #334155;
-    }
-    ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
+    button:hover { background-color: #1d4ed8; }
+    ul { list-style: none; padding: 0; margin: 0; }
     li {
       background: #f1f5f9;
       padding: 12px;
       border-radius: 8px;
       margin-bottom: 8px;
       font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
-    .note {
+    .delete-btn {
+      background: #ef4444;
+      padding: 4px 8px;
       font-size: 12px;
-      color: #64748b;
-      margin-top: 16px;
-      text-align: center;
     }
+    .delete-btn:hover { background: #dc2626; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
       <h1>Hackathon Idea Board</h1>
-      <span class="badge">v1.1 LIVE</span>
+      <span class="badge">v2.0 DB LIVE</span>
     </div>
 
     <div class="input-group">
       <input type="text" id="ideaInput" placeholder="Enter a project idea..." />
-      <button onclick="addIdea()">Add</button>
+      <button onclick="addIdea()">Save</button>
     </div>
 
-    <ul id="ideaList">
-      <li>Sample: AI-powered study planner</li>
-    </ul>
-
-    <p class="note">Note: Refreshing the page clears new items. We will fix this with a Database in v2.0!</p>
+    <ul id="ideaList"><li>Loading from database...</li></ul>
   </div>
 
   <script>
-    function addIdea() {
+    // PASTE YOUR SUPABASE CREDENTIALS BELOW
+    const SUPABASE_URL = "https://moybzsxqizblphwmzkch.supabase.co/rest/v1/";
+    const SUPABASE_KEY = "sb_publishable_AlOZPlMH5Pa9ePFiPXmlGg_xCTvqLVt";
+
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // 1. READ: Fetch all ideas from the database on page load
+    async function loadIdeas() {
+      const { data, error } = await db
+        .from("ideas")
+        .select("*")
+        .order("id", { ascending: false });
+
+      const list = document.getElementById("ideaList");
+      list.innerHTML = "";
+
+      if (error) {
+        list.innerHTML = `<li style="color:red;">Error: ${error.message}</li>`;
+        return;
+      }
+
+      data.forEach((item) => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <span>${item.content}</span>
+          <button class="delete-btn" onclick="deleteIdea(${item.id})">Delete</button>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    // 2. CREATE: Save a new idea to the database
+    async function addIdea() {
       const input = document.getElementById("ideaInput");
       const text = input.value.trim();
       if (!text) return;
 
-      const li = document.createElement("li");
-      li.textContent = text;
-      document.getElementById("ideaList").appendChild(li);
+      await db.from("ideas").insert([{ content: text }]);
       input.value = "";
+      loadIdeas(); // Refresh list from DB
     }
+
+    // 3. DELETE: Remove an idea from the database
+    async function deleteIdea(id) {
+      await db.from("ideas").delete().eq("id", id);
+      loadIdeas();
+    }
+
+    // Load data immediately when site opens
+    loadIdeas();
   </script>
 </body>
 </html>
